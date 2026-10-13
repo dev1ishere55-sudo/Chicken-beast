@@ -6,6 +6,8 @@ import {
   buyUpgrade,
   collectPassive,
   newPlayer,
+  rankIndexFor,
+  RANKS,
   startBoost,
   type PlayerState,
 } from "./lib/gameRules.ts";
@@ -72,9 +74,26 @@ export const sync = mutation({
     const p = await loadPlayer(ctx, await requireToken(ctx));
     const next = applyTaps(toState(p), args.taps, args.frenzyTaps, Date.now());
     await ctx.db.patch("players", p._id, next);
+    await announceRankUp(ctx, p.tokenIdentifier, p.total, next.total);
     return next;
   },
 });
+
+// Posts a chat announcement when a sync pushes the player into a higher rank
+async function announceRankUp(ctx: MutationCtx, token: string, before: number, after: number) {
+  const newRank = rankIndexFor(after);
+  if (newRank <= rankIndexFor(before)) return;
+  const profile = await ctx.db
+    .query("profiles")
+    .withIndex("by_token", (q) => q.eq("tokenIdentifier", token))
+    .unique();
+  if (!profile) return;
+  await ctx.db.insert("chatMessages", {
+    authorId: profile._id,
+    kind: "rankup",
+    body: `${profile.nickname} ranked up to ${RANKS[newRank].name}!`,
+  });
+}
 
 export const buy = mutation({
   args: { key: v.union(v.literal("whey"), v.literal("creatine"), v.literal("preworkout")) },
