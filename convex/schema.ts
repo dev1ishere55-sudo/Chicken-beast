@@ -15,9 +15,21 @@ export default defineSchema({
     referralCode: v.string(),
     referredBy: v.optional(v.string()),
     referralCount: v.number(),
+    clanId: v.optional(v.id("clans")),
   })
     .index("by_token", ["tokenIdentifier"])
-    .index("by_referralCode", ["referralCode"]),
+    .index("by_referralCode", ["referralCode"])
+    .index("by_clanId", ["clanId"]),
+
+  clans: defineTable({
+    name: v.string(),
+    ownerId: v.id("profiles"),
+    memberCount: v.number(),
+    // Pooled BP mined by members while they were in the clan
+    totalBp: v.number(),
+  })
+    .index("by_name", ["name"])
+    .index("by_totalBp", ["totalBp"]),
 
   chatMessages: defineTable({
     authorId: v.id("profiles"),
